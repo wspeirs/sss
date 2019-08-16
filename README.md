@@ -54,3 +54,12 @@ var out_b:pipe = run("/path/to/program_b").stdout;
 
 (out_a + out_b).run("/path/to/program_c").exit_code
 ```
+
+The `write` function is used to write output to the screen or a file, and is a method of a pipe:
+
+```
+run("/path/to/program").stdout.write(); // writes STDOUT to the console, STDOUT of the sss program
+run("/path/to/program").stdout.write("/tmp/program_stdout"); // writes STDOUT to a file /tmp/program_stdout
+```
+
+

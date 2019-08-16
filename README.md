@@ -5,12 +5,6 @@ The Simple Shell Scripting language is designed to run programs, and manipulate 
 
 I think the best way to learn a new language is by example, so here are a few:
 
-### Constants
-`const x:num = 123.456; // constant number`
-`const y:str = "hello world"; // constant string literal`
-
-`ARG` is a special constant that is built-in and is of type `str:[]`. Each array element contains the arguments passed to the script, zero indexed.
-
 ### Variables
 ```
 var a:str = "hello"; // create a string variable, and assign to string literal
@@ -23,9 +17,19 @@ Variables are defined with the `var` keyword and are typed in the Rust fashion o
 * `str` - Any type of string
 * `pipe` - A pipe that results from running the built-in `run` command
 
-`CWD = "/path/to/current/directory";`
+Comments, as shown above, are as you'd expect from C/C++/Rust/...
 
 `CWD` is a special variable that can be set or read, and represents the current working directory. `CWD` is automatically set to the directory the script was run from at the start of the script.
+
+`CWD = "/path/to/current/directory";`
+
+### Constants
+```
+const x:num = 123.456; // constant number
+const y:str = "hello world"; // constant string literal
+```
+
+`ARG` is a special constant that is built-in and is of type `str:[]`. Each array element contains the arguments passed to the script, zero indexed.
 
 ### Running Programs
 The main point of the language is executing other programs and manipulating their output, including the return code. Programs are executed via the built-in `run` command. There are 2 formats for this command:

@@ -1,0 +1,43 @@
+// explicitly defined, and implicitly added to sequences
+WHITESPACE = _{ (" ")+ | "\t" | NEWLINE }
+COMMENT = _{ "/*" ~ (!"*/" ~ ANY)* ~ "*/" | (!"//" ~ ANY)* ~ "//" ~ (!NEWLINE ~ ANY)* ~ "\n" }
+
+identifier_char = _{ ASCII_ALPHANUMERIC | "_" }
+identifier      =  { (ASCII_ALPHA) ~ identifier_char* }
+
+// literals
+string = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
+
+integer =  { ASCII_DIGIT ~ ASCII_DIGIT* }
+float   = { ASCII_DIGIT ~ "." ~ ASCII_DIGIT* }  
+
+hex_integer = { "0x" ~ ASCII_HEX_DIGIT+ }
+
+number = { hex_integer | float | integer }
+
+bin_op     = { "+" | "-" | "*" | "/" | "%" }
+
+// variables
+var_type = { "str" | "num" | "pipe" }
+var_def  = { identifier ~ ":" ~ var_type }
+var_list = { var_def ~ ("," ~ var_def)* }
+
+// expressions and primary expressions
+expression = { primary ~ (bin_op ~ primary)* ~ ";" }
+primary = { method_call | fun_call | ("(" ~ expression ~ ")") | number | identifier | string }
+fun_call = { identifier ~ "(" ~ var_list? ~ ")" }
+method_call = { (fun_call | identifier) ~ "." ~ fun_call}
+program_line = { declaration | assignment | expression | ((method_call | fun_call) ~ ";") }
+
+// declarations and assignments
+declaration = { "var" ~ var_def ~ "=" ~ expression }
+assignment = { identifier ~ "=" ~ expression }
+
+// top-level program
+program = { SOI ~ (program_line | (func_def ~ block))* ~ EOI }
+
+func_def = { "fun" ~ identifier ~ "(" ~ var_list? ~ ")" ~ ("->" ~ var_type)? }
+
+block = { "{" ~ program_line+ ~ "}" }
+
+

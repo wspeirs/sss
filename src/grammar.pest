@@ -27,17 +27,17 @@ expression = { primary ~ (bin_op ~ primary)* ~ ";" }
 primary = { method_call | fun_call | ("(" ~ expression ~ ")") | number | identifier | string }
 fun_call = { identifier ~ "(" ~ var_list? ~ ")" }
 method_call = { (fun_call | identifier) ~ "." ~ fun_call}
-program_line = { declaration | assignment | expression | ((method_call | fun_call) ~ ";") }
+program_line = { declaration | assignment | ((method_call | fun_call) ~ ";") | expression }
 
 // declarations and assignments
 declaration = { "var" ~ var_def ~ "=" ~ expression }
 assignment = { identifier ~ "=" ~ expression }
 
 // top-level program
-program = { SOI ~ (program_line | (func_def ~ block))* ~ EOI }
+script = { SOI ~ (program_line | fun)* ~ EOI }
 
-func_def = { "fun" ~ identifier ~ "(" ~ var_list? ~ ")" ~ ("->" ~ var_type)? }
-
+fun_signature = { "fun" ~ identifier ~ "(" ~ var_list? ~ ")" ~ ("->" ~ var_type)? }
 block = { "{" ~ program_line+ ~ "}" }
+fun = { fun_signature ~ block }
 
 

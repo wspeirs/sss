@@ -8,6 +8,7 @@ use pest::Parser;
 
 mod script;
 mod expression;
+mod parse_error;
 
 use script::Script;
 //use program::Term;
@@ -31,6 +32,10 @@ fn main() {
     // parse the file
     let pairs = SSSParser::parse(Rule::script, &contents).unwrap_or_else(|e| panic!("Error parsing: {}", e)).next().unwrap();
 
-    Script::new(pairs);
+    let script = Script::new(pairs);
 
+    match script {
+        Ok(s) => println!("{:?}", s),
+        Err(e) => println!("Error: {:?}", e)
+    }
 }

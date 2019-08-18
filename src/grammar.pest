@@ -9,25 +9,26 @@ identifier      =  { (ASCII_ALPHA) ~ identifier_char* }
 string = @{ "\"" ~ (!"\"" ~ ANY)* ~ "\"" }
 
 integer =  { ASCII_DIGIT ~ ASCII_DIGIT* }
-float   = { ASCII_DIGIT ~ "." ~ ASCII_DIGIT* }  
+float   = { ASCII_DIGIT+ ~ "." ~ ASCII_DIGIT* }
+number  = { float | integer }
 
-hex_integer = { "0x" ~ ASCII_HEX_DIGIT+ }
-
-number = { hex_integer | float | integer }
+term = { identifier | string | number }
 
 bin_op     = { "+" | "-" | "*" | "/" | "%" }
 
 // variables
 var_type = { "str" | "num" | "pipe" }
-var_def  = { identifier ~ ":" ~ var_type }
-var_list = { var_def ~ ("," ~ var_def)* }
+array = { "[]" }
+var_def  = { identifier ~ ":" ~ var_type ~ array? }
+param_list = { var_def ~ ("," ~ var_def)* }
+var_list = { expression ~ ("," ~ expression)* }
 
 // expressions and primary expressions
-expression = { primary ~ (bin_op ~ primary)* ~ ";" }
-primary = { method_call | fun_call | ("(" ~ expression ~ ")") | number | identifier | string }
+expression = { primary ~ (bin_op ~ primary)* }
+primary = { method_call | fun_call | ("(" ~ expression ~ ")") | term }
 fun_call = { identifier ~ "(" ~ var_list? ~ ")" }
 method_call = { (fun_call | identifier) ~ "." ~ fun_call}
-program_line = { declaration | assignment | ((method_call | fun_call) ~ ";") | expression }
+program_line = { (declaration | assignment | method_call | fun_call)  ~ ";"}
 
 // declarations and assignments
 declaration = { "var" ~ var_def ~ "=" ~ expression }
@@ -39,5 +40,3 @@ script = { SOI ~ (program_line | fun)* ~ EOI }
 fun_signature = { "fun" ~ identifier ~ "(" ~ var_list? ~ ")" ~ ("->" ~ var_type)? }
 block = { "{" ~ program_line+ ~ "}" }
 fun = { fun_signature ~ block }
-
-

@@ -1,30 +1,46 @@
 use super::Rule;
 use pest::iterators::Pair;
 
-/// An expression is 1 of 3 types:
+/// An expression is either an assignment or a function call
 /// - an assignment to a variable
 /// - a function that must be called
-/// - some set of code we must execute
+#[derive(Debug, Clone)]
 pub enum Expression {
-    Assignment(Assignment),
-    FunctionCall(FunctionCall),
-    Executable(Executable)
+    Assignment(String, Assignment),
+    FunctionCall(String, FunctionCall)
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum VarType {
     String,
     Number,
     Pipe
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct VarDef {
+    pub var_type:VarType,
+    pub is_array:bool
+}
+
+impl VarDef {
+    pub fn from_type(var_type: &VarType) -> VarDef {
+        VarDef{ var_type:var_type.clone(), is_array:false }
+    }
+
+    pub fn from_array(var_type: &VarType) -> VarDef {
+        VarDef{ var_type:var_type.clone(), is_array:true }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Variable {
     pub name:String,
-    pub var_type:VarType
+    pub var_def:VarDef
 }
 
 impl Variable {
+    /// Given a var_def rule, constructs a variable
     pub fn new(var_def: Pair<Rule>) -> Variable {
         let vd_str = var_def.as_str();
         let mut inner = var_def.into_inner();
@@ -37,20 +53,69 @@ impl Variable {
             _ => { panic!("Unknown variable type: {:?}", vd_str) }
         };
 
-        Variable{ name, var_type }
+        Variable {
+            name,
+            var_def: VarDef { var_type, is_array: inner.peek().is_some() }
+        }
     }
 }
 
-pub struct Assignment {
-    pub lhs:Variable,
-    pub rhs:Executable
+#[derive(Debug, Clone)]
+pub enum Operator {
+    Add,
+    Sub,
+    Mul,
+    Div
 }
 
+#[derive(Debug, Clone)]
+pub enum RightHandSide {
+    Variable(Variable),
+    Term(Term),
+    Operation(Variable, Operator, Variable),
+    FunctionCall(FunctionCall)
+}
+
+#[derive(Debug, Clone)]
+pub struct Assignment {
+    pub lhs:Variable,
+    pub rhs:RightHandSide
+}
+
+#[derive(Debug, Clone)]
 pub struct FunctionCall {
-    pub name:String,
+    pub fun:Function,
     pub var_list:Vec<Variable>
 }
 
-pub struct Executable {
-    pub contents:String // totally punting on this for now
+#[derive(Debug, Clone)]
+pub enum FunctionType {
+    UserDefined,
+    BuiltIn
+}
+
+#[derive(Debug, Clone)]
+pub struct Function {
+    pub fun_type: FunctionType,
+    pub params: Vec<Variable>,  // parameters to the function
+    pub ret_type: Option<VarDef>,      // return type of the function
+    pub code: Vec<Expression>   // code that makes-up the function
+}
+
+impl Function {
+    pub fn built_in(params: Vec<Variable>, ret_type: Option<VarDef>) -> Function {
+        Function {
+            fun_type: FunctionType::BuiltIn,
+            params,
+            ret_type,
+            code: Vec::new()
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum Term {
+    String(String),
+    Number(f64),
+    Variable(Variable)
 }

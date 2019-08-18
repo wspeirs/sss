@@ -35,7 +35,7 @@ fn main() {
     let script = Script::new(pairs);
 
     match script {
-        Ok(s) => println!("{:?}", s),
+        Ok(s) => println!("{}", s),
         Err(e) => println!("Error: {:?}", e)
     }
 }

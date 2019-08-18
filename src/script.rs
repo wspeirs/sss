@@ -2,6 +2,7 @@ use super::Rule;
 use pest::iterators::Pair;
 
 use std::collections::HashMap;
+use std::fmt;
 
 use crate::parse_error::ParseError;
 
@@ -20,6 +21,19 @@ pub struct Script {
 
 static mut tmp_num: usize = 0; // counter to generate unique temporary variables
 
+impl fmt::Display for Script {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "FUNCTIONS: {:?}", self.functions)?;
+        writeln!(f, "VARIABLES: {:?}", self.variables)?;
+
+        for e in &self.code {
+            writeln!(f, "{}", e)?;
+        }
+
+        Ok( () )
+    }
+}
+
 impl Script {
     /// Generates a temp variable with the same type as the variable passed
     fn generate_temp(var_def: &VarDef) -> Variable {
@@ -37,7 +51,7 @@ impl Script {
         let mut variables :SymbolTable = HashMap::new();
 
         // construct all of our built-in functions
-        let run_fun = Function::built_in(vec![
+        let run_fun = Function::built_in("run", vec![
                 Variable{name: String::from("input"), var_def: VarDef{var_type:VarType::Pipe, is_array:false}},
                 Variable{name: String::from("exec"), var_def: VarDef{var_type:VarType::String, is_array:false}}
             ], Some(VarDef{var_type:VarType::Pipe, is_array:true}));
@@ -79,12 +93,6 @@ impl Script {
 
             code.extend(exp);
         }
-
-        println!("FUNCTIONS:");
-        functions.iter().for_each(|f| println!("{:?}", f));
-
-        println!("VARIABLES:");
-        variables.iter().for_each(|v| println!("{:?}", v));
 
         Ok(Script {
             functions,

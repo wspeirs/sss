@@ -1,6 +1,8 @@
 use super::Rule;
 use pest::iterators::Pair;
 
+use std::fmt;
+
 /// An expression is either an assignment or a function call
 /// - an assignment to a variable
 /// - a function that must be called
@@ -8,6 +10,15 @@ use pest::iterators::Pair;
 pub enum Expression {
     Assignment(String, Assignment),
     FunctionCall(String, FunctionCall)
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Expression::Assignment(_, a) => { write!(f, "{}", a) },
+            Expression::FunctionCall(_, fc) => { write!(f, "{}", fc) }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -82,11 +93,24 @@ pub struct Assignment {
     pub rhs:RightHandSide
 }
 
+impl fmt::Display for Assignment {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} = {:?}", self.lhs.name, self.rhs)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct FunctionCall {
     pub fun:Function,
     pub var_list:Vec<Variable>
 }
+
+impl fmt::Display for FunctionCall {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{}({:?})", self.fun.name, self.fun.params)
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub enum FunctionType {
@@ -96,6 +120,7 @@ pub enum FunctionType {
 
 #[derive(Debug, Clone)]
 pub struct Function {
+    pub name: String,
     pub fun_type: FunctionType,
     pub params: Vec<Variable>,  // parameters to the function
     pub ret_type: Option<VarDef>,      // return type of the function
@@ -103,8 +128,9 @@ pub struct Function {
 }
 
 impl Function {
-    pub fn built_in(params: Vec<Variable>, ret_type: Option<VarDef>) -> Function {
+    pub fn built_in(name: &str, params: Vec<Variable>, ret_type: Option<VarDef>) -> Function {
         Function {
+            name: String::from(name),
             fun_type: FunctionType::BuiltIn,
             params,
             ret_type,

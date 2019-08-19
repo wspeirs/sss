@@ -37,6 +37,6 @@ assignment = { identifier ~ "=" ~ expression }
 // top-level program
 script = { SOI ~ (program_line | fun)* ~ EOI }
 
-fun_signature = { "fun" ~ identifier ~ "(" ~ var_list? ~ ")" ~ ("->" ~ var_type)? }
+fun_signature = { "fun" ~ identifier ~ "(" ~ param_list? ~ ")" ~ ("->" ~ var_type)? }
 block = { "{" ~ program_line+ ~ "}" }
 fun = { fun_signature ~ block }

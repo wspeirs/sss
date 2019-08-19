@@ -1,10 +1,13 @@
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
+#[macro_use]
+extern crate log;
 
 use std::fs::File;
 use std::io::Read;
 use pest::Parser;
+use simple_logger;
 
 mod script;
 mod expression;
@@ -23,6 +26,8 @@ struct SSSParser;
 
 
 fn main() {
+    simple_logger::init().unwrap();
+
     let mut f = File::open("tests/simple.sss").unwrap_or_else(|e| panic!("Error opening file: {}", e));
 
     // read the entire file into memory

@@ -55,7 +55,7 @@ impl Variable {
     pub fn new(var_def: Pair<Rule>) -> Variable {
         let vd_str = var_def.as_str();
         let mut inner = var_def.into_inner();
-        let name = String::from(inner.next().unwrap().as_str());
+        let name = String::from(inner.next().unwrap().as_str().trim());
 
         let var_type = match inner.next().unwrap().as_str() {
             "str" => { VarType::String },

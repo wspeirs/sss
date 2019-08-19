@@ -108,14 +108,16 @@ impl Script {
         let exp = match program_line.as_rule() {
             Rule::declaration => {
                 // var_def, expression
-                let mut inner = program_line.into_inner();
+                let mut inner = program_line.clone().into_inner();
 
                 let var_def = inner.next().unwrap();
                 let lhs = Variable::new(var_def);
 
                 if variables.insert(lhs.name.clone(), lhs.clone()).is_some() {
-                    panic!("Variable redefinition: {}", pl_str);
+                    return Err(ParseError::new(program_line, format!("Redeclaration of {}", lhs.name)));
                 }
+
+                debug!("Declared variable: {:?}", lhs);
 
                 // process the expression on the right-hand-side
                 let (mut exps, rhs) = Script::process_expression(inner.next().unwrap(), variables, functions)?;
@@ -128,7 +130,7 @@ impl Script {
                 // identifier, expression
                 let mut inner = program_line.clone().into_inner();
 
-                let ident = inner.next().unwrap().as_str();
+                let ident = inner.next().unwrap().as_str().trim();
 
                 // check to make sure we've previously declared this variable
                 if !variables.contains_key(ident) {

@@ -147,13 +147,13 @@ impl Script {
             },
             Rule::method_call => {
                 let pl_str = String::from(program_line.as_str());
-                let fun_call = Script::process_method_call(program_line.into_inner().next().unwrap(), variables, functions)?;
+                let fun_call = Script::process_method_call(program_line, variables, functions)?;
 
                 vec![Expression::FunctionCall(pl_str, fun_call)]
             },
             Rule::fun_call => {
                 let pl_str = String::from(program_line.as_str());
-                let fun_call = Script::process_fun_call(program_line.into_inner().next().unwrap(), variables, functions)?;
+                let fun_call = Script::process_fun_call(program_line, variables, functions)?;
 
                 vec![Expression::FunctionCall(pl_str, fun_call)]
             },
@@ -388,6 +388,8 @@ impl Script {
     fn process_fun_call(fun_call: Pair<Rule>, variables: &SymbolTable, functions: &FunctionTable) -> Result<FunctionCall, ParseError> {
         let fc_str = fun_call.as_str();
         let mut inner = fun_call.clone().into_inner();
+
+        debug!("INNER: {:?}", inner);
 
         let name = String::from(inner.next().unwrap().as_str());
 

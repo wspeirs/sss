@@ -19,9 +19,10 @@ bin_op     = { "+" | "-" | "*" | "/" | "%" }
 // variables
 var_type = { "str" | "num" | "pipe" }
 array = { "[]" }
-var_def  = { identifier ~ ":" ~ var_type ~ array? }
-param_list = { var_def ~ ("," ~ var_def)* }
-var_list = { expression ~ ("," ~ expression)* }
+var_def    = { var_type ~ array? }
+var_dec    = { identifier ~ ":" ~ var_def }
+param_list = { var_dec ~ ("," ~ var_dec)* }
+var_list   = { expression ~ ("," ~ expression)* }
 
 // expressions and primary expressions
 expression = { primary ~ (bin_op ~ primary)* }
@@ -31,12 +32,12 @@ method_call = { (fun_call | identifier) ~ ("." ~ fun_call)+ }
 program_line = { (declaration | assignment | method_call | fun_call)  ~ ";"}
 
 // declarations and assignments
-declaration = { "var" ~ var_def ~ "=" ~ expression }
+declaration = { "var" ~ var_dec ~ "=" ~ expression }
 assignment = { identifier ~ "=" ~ expression }
 
 // top-level program
 script = { SOI ~ (program_line | fun)* ~ EOI }
 
-fun_signature = { "fun" ~ identifier ~ "(" ~ param_list? ~ ")" ~ ("->" ~ var_type)? }
+fun_signature = { "fun" ~ identifier ~ "(" ~ param_list? ~ ")" ~ ("->" ~ var_def)? }
 block = { "{" ~ program_line+ ~ "}" }
 fun = { fun_signature ~ block }

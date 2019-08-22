@@ -9,20 +9,21 @@ use crate::parse_error::ParseError;
 use crate::expression::*;
 
 // helpful type alias
-type SymbolTable = HashMap<String, Variable>;
+pub type SymbolTable = HashMap<String, Variable>;
 type FunctionTable = HashMap<String, Function>;
 
 #[derive(Debug, Clone)]
 pub struct Script {
-    functions: FunctionTable,   // the functions defined in this script + built-ins
-    variables: SymbolTable,     // variables and their current values
-    code: Vec<Expression>,       // list of code to execute in order
+    user_functions: FunctionTable,     // the functions defined in this script + built-ins
+    builtin_functions: FunctionTable,  // built-in functions
+    variables: SymbolTable,            // variables and their current values
+    code: Vec<Expression>,             // list of code to execute in order
     tmp_num: usize
 }
 
 impl fmt::Display for Script {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "FUNCTIONS: {:?}", self.functions)?;
+        writeln!(f, "FUNCTIONS: {:?}", self.user_functions)?;
         writeln!(f, "VARIABLES: {:?}", self.variables)?;
 
         for e in &self.code {
@@ -51,39 +52,46 @@ impl Script {
     /// Constructs a Script object from a set of rules return from the parser
     pub fn new(pairs: Pair<Rule>) -> Result<Script, ParseError> {
         let mut script = Script {
-            functions: HashMap::new(),
-            variables: HashMap::new(),
+            user_functions: FunctionTable::new(),
+            builtin_functions: FunctionTable::new(),
+            variables: SymbolTable::new(),
             code: Vec::new(),
             tmp_num: 0
         };
 
+
         // construct all of our built-in functions
-        let run_fun = Function::built_in("run", vec![
+        let run_fun = Function::new("run", vec![
                 Variable{name: String::from("input"), var_def: VarDef{var_type:VarType::Pipe, is_array:false}},
                 Variable{name: String::from("exec"), var_def: VarDef{var_type:VarType::String, is_array:false}}
             ], Some(VarDef{var_type:VarType::Pipe, is_array:true}));
 
-        script.functions.insert(String::from("run"), run_fun);
+        script.builtin_functions.insert(String::from("run"), run_fun);
 
-/*
-        let inner = script.clone().into_inner();
+        let inner = pairs.clone().into_inner();
 
         // loop through all functions first, to build up functions hash map
         for inner in inner {
             match inner.as_rule() {
                 Rule::program_line => { continue },
                 Rule::fun => {
-                    let ret = script.process_fun(inner);
+                    let fun = script.process_fun(inner.clone())?;
 
-                    if self.functions.insert(ret.0.clone(), ret.1).is_some() {
-                        panic!("Function re-definition: {}", ret.0);
+                    let fun_name = fun.clone().name;
+
+                    if script.builtin_functions.contains_key(&fun_name) {
+                        return Err(ParseError::new(inner, format!("Re-definition of built-in function: {:?}", fun)));
+                    }
+
+                    if script.user_functions.insert(fun_name, fun.clone()).is_some() {
+                        return Err(ParseError::new(inner, format!("Function re-definition: {:?}", fun)));
                     }
                 },
                 Rule::EOI => { }
                 _ => { println!("UNKNOWN: {:?}", inner) }
             }
         }
-*/
+
         let inner = pairs.into_inner();
 
         // now go through all the program lines
@@ -99,6 +107,65 @@ impl Script {
         }
 
         Ok(script)
+    }
+
+    pub fn run(&self) {
+
+    }
+
+    fn process_fun(&mut self, fun: Pair<Rule>) -> Result<Function, ParseError> {
+        let fun_str = String::from(fun.as_str());
+        let mut inner = fun.clone().into_inner();
+
+        let mut signature = inner.next().unwrap().into_inner();
+
+        let fun_name = String::from(signature.next().unwrap().as_str());
+
+        let mut next = signature.next();
+        let mut fun_vars = SymbolTable::new();
+        let mut ret_val = Option::None;
+
+        while next.is_some() {
+            match next.clone().unwrap().as_rule() {
+                Rule::param_list => {
+                    let param_list = next.unwrap().into_inner().map(|dec| {
+                        Variable::new(dec)
+                    }).collect::<Vec<_>>();
+
+                    // insert them all into the function's symbol table
+                    param_list.iter().for_each(|v| {
+                        fun_vars.insert(v.clone().name, v.clone());
+                    });
+
+                },
+                Rule::var_def => {
+                    ret_val = Some(VarDef::new(next.unwrap()));
+                },
+                _ => { return Err(ParseError::new(fun, format!("Unexpected token: {:?}", next.unwrap()))) }
+            }
+
+            next = signature.next();
+        }
+
+        let block = inner.next().unwrap().into_inner();
+
+        for pl in block {
+            self.process_program_line(pl);
+        }
+
+        // this is a bit of a hack, process_program_lines is going to fill self.code
+        // but we need these code attached to a function, not the "main" code
+        // so we copy that Vec, and drain the other
+        let mut fun_code = Vec::with_capacity(self.code.len());
+
+        fun_code.extend(self.code.drain(1..));
+
+        Ok( Function {
+            name: fun_name,
+            params: fun_vars,
+            ret_type: ret_val,
+            code: fun_code
+        } )
     }
 
     fn process_program_line(&mut self, program_line: Pair<Rule>) -> Result<(), ParseError> {
@@ -383,7 +450,9 @@ impl Script {
 
         let name = String::from(inner.next().unwrap().as_str());
 
-        let fun = if let Some(fun) = self.functions.get(&name) {
+        let fun = if let Some(fun) = self.user_functions.get(&name) {
+            fun.clone()
+        } else if let Some(fun) = self.builtin_functions.get(&name) {
             fun.clone()
         } else {
             return Err(ParseError::new(fun_call, String::from(format!("Unknown function {}", name))));

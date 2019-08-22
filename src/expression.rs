@@ -1,6 +1,8 @@
 use super::Rule;
 use pest::iterators::Pair;
 
+use crate::script::SymbolTable;
+
 use std::fmt;
 
 /// An expression is either an assignment or a function call
@@ -35,6 +37,19 @@ pub struct VarDef {
 }
 
 impl VarDef {
+    pub fn new(var_def: Pair<Rule>) -> VarDef {
+        let mut inner = var_def.clone().into_inner();
+
+        let var_type = match inner.next().unwrap().as_str() {
+            "str" => { VarType::String },
+            "num" => { VarType::Number },
+            "pipe" => { VarType::Pipe },
+            _ => { panic!("Unknown variable type: {:?}", var_def) }
+        };
+
+        VarDef { var_type, is_array: inner.peek().is_some() }
+    }
+
     pub fn from_type(var_type: &VarType) -> VarDef {
         VarDef{ var_type:var_type.clone(), is_array:false }
     }
@@ -51,22 +66,16 @@ pub struct Variable {
 }
 
 impl Variable {
-    /// Given a var_def rule, constructs a variable
-    pub fn new(var_def: Pair<Rule>) -> Variable {
-        let vd_str = var_def.as_str();
-        let mut inner = var_def.into_inner();
-        let name = String::from(inner.next().unwrap().as_str().trim());
+    /// Given a var_dec rule, constructs a variable
+    pub fn new(var_dec: Pair<Rule>) -> Variable {
+        let mut inner = var_dec.into_inner();
+        let name = String::from(inner.next().unwrap().as_str());
 
-        let var_type = match inner.next().unwrap().as_str() {
-            "str" => { VarType::String },
-            "num" => { VarType::Number },
-            "pipe" => { VarType::Pipe },
-            _ => { panic!("Unknown variable type: {:?}", vd_str) }
-        };
+        let var_def = VarDef::new(inner.next().unwrap());
 
         Variable {
             name,
-            var_def: VarDef { var_type, is_array: inner.peek().is_some() }
+            var_def
         }
     }
 }
@@ -113,28 +122,28 @@ impl fmt::Display for FunctionCall {
 
 
 #[derive(Debug, Clone)]
-pub enum FunctionType {
-    UserDefined,
-    BuiltIn
-}
-
-#[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
-    pub fun_type: FunctionType,
-    pub params: Vec<Variable>,  // parameters to the function
-    pub ret_type: Option<VarDef>,      // return type of the function
-    pub code: Vec<Expression>   // code that makes-up the function
+    pub params: SymbolTable,      // parameters to the function
+    pub ret_type: Option<VarDef>, // return type of the function
+    pub code: Vec<Expression>     // code that makes-up the function
 }
 
 impl Function {
-    pub fn built_in(name: &str, params: Vec<Variable>, ret_type: Option<VarDef>) -> Function {
+    /// Constructs a new Function without checking to see if param names are duplicates
+    pub fn new(name: &str, params: Vec<Variable>, ret: Option<VarDef>) -> Function {
+        let mut symbols = SymbolTable::new();
+
+        // put all the params into a symbol table
+        for param in params.iter() {
+            symbols.insert(param.clone().name, param.clone());
+        }
+
         Function {
             name: String::from(name),
-            fun_type: FunctionType::BuiltIn,
-            params,
-            ret_type,
-            code: Vec::new()
+            params: symbols,
+            ret_type: ret,
+            code: Vec::<Expression>::new()
         }
     }
 }

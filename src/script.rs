@@ -41,7 +41,11 @@ impl Script {
             String::from(format!("_t{}", self.tmp_num))
         };
 
-        Variable{ name:var_name, var_def: var_def.clone() }
+        let ret = Variable{ name:var_name.clone(), var_def: var_def.clone() };
+
+        self.variables.insert(var_name, ret.clone());
+
+        ret
     }
 
     /// Constructs a Script object from a set of rules return from the parser
@@ -187,8 +191,6 @@ impl Script {
         while inner.peek().is_some() {
             let lhs = self.generate_temp(&op1.var_def);
 
-            self.variables.insert(lhs.name.clone(), lhs.clone());
-
             self.code.push(Expression::Assignment(exp_str.clone(), Assignment{lhs:lhs.clone(), rhs}));
 
             let op1 = lhs;
@@ -325,40 +327,52 @@ impl Script {
     }
 
     fn process_method_call(&mut self, method_call: Pair<Rule>) -> Result<FunctionCall, ParseError> {
-        let mc_str = method_call.as_str();
+        let mc_str = String::from(method_call.as_str());
         // fun_call | identifier, fun_call
         let mut inner = method_call.clone().into_inner();
 
         let first = inner.next().unwrap(); // either fun_call or ident
+        let first_str = first.as_str();
         let fun_call = inner.next().unwrap();
 
-        let fun_call = match first.as_rule() {
+        let var = match first.as_rule() {
             Rule::identifier => {
-                if let Some(var) = self.variables.get(first.as_str()) {
+                if let Some(var) = self.variables.get(first_str) {
                     if let VarType::Pipe = var.var_def.var_type {
-                        if let Some(fun) = self.functions.get(fun_call.as_str()) {
-                            if let FunctionType::BuiltIn = fun.fun_type {
-                                self.process_fun_call(fun_call)?
-                            } else {
-                                return Err(ParseError::new(method_call, format!("Attempting to call user defined function {} on pipe {}", fun_call.as_str(), first.as_str())));
-                            }
-                        } else {
-                            return Err(ParseError::new(method_call, format!("Unknown function {}", fun_call.as_str())));
-                        }
+                        var.clone()
                     } else {
-                        return Err(ParseError::new(method_call, format!("Cannot call a method on a non-pipe variable: {}", first.as_str())));
+                        return Err(ParseError::new(method_call, format!("Cannot call a method on a non-pipe variable: {}", first_str)));
                     }
                 } else {
-                    return Err(ParseError::new(method_call, format!("Unknown variable {}", first.as_str())));
+                    return Err(ParseError::new(method_call, format!("Unknown variable {}", first_str)));
                 }
             },
             Rule::fun_call => {
-                self.process_fun_call(first)?
+                let fc = self.process_fun_call(first)?;
+                let ret_type = fc.clone().fun.ret_type;
+
+                if ret_type.is_none() {
+                    return Err(ParseError::new(method_call, format!("Attempting to call a function on a function that does not return a value: {}", first_str)));
+                }
+
+                let lhs = self.generate_temp(&ret_type.unwrap());
+
+                self.code.push(Expression::Assignment(mc_str, Assignment {
+                    lhs: lhs.clone(),
+                    rhs: RightHandSide::FunctionCall(fc)
+                }));
+
+                lhs
             },
             _ => { panic!("Unknown expansion for method_call: {}", mc_str); }
         };
 
-        Ok(fun_call)
+        let mut ret = self.process_fun_call(fun_call)?;
+
+        // insert the variable as the first argument to the list
+        ret.var_list.insert(0, var);
+
+        Ok(ret)
     }
 
     fn process_fun_call(&mut self, fun_call: Pair<Rule>) -> Result<FunctionCall, ParseError> {
@@ -378,6 +392,9 @@ impl Script {
         let var_list = if inner.peek().is_some() {
             inner.next().unwrap().into_inner().map(|exp| {
                 let var = self.process_expression(exp).expect("Error processing expression");
+
+                debug!("VAR LIST VAR: {:?}", var);
+                debug!("VARIABLES: {:?}", self.variables);
 
                 match var {
                     RightHandSide::Variable(v) => v,

@@ -107,7 +107,7 @@ pub struct FunctionCall {
 
 impl fmt::Display for FunctionCall {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{}({:?})", self.fun.name, self.fun.params)
+        writeln!(f, "{}({:?})", self.fun.name, self.var_list)
     }
 }
 

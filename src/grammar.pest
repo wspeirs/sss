@@ -27,7 +27,7 @@ var_list = { expression ~ ("," ~ expression)* }
 expression = { primary ~ (bin_op ~ primary)* }
 primary = { method_call | fun_call | ("(" ~ expression ~ ")") | term }
 fun_call = { identifier ~ "(" ~ var_list? ~ ")" }
-method_call = { (fun_call | identifier) ~ "." ~ fun_call}
+method_call = { (fun_call | identifier) ~ ("." ~ fun_call)+ }
 program_line = { (declaration | assignment | method_call | fun_call)  ~ ";"}
 
 // declarations and assignments

@@ -26,7 +26,7 @@ struct SSSParser;
 
 
 fn main() {
-    simple_logger::init().unwrap();
+    simple_logger::init_with_level(log::Level::Debug).unwrap();
 
     let mut f = File::open("tests/simple.sss").unwrap_or_else(|e| panic!("Error opening file: {}", e));
 
@@ -36,6 +36,10 @@ fn main() {
 
     // parse the file
     let pairs = SSSParser::parse(Rule::script, &contents).unwrap_or_else(|e| panic!("Error parsing: {}", e)).next().unwrap();
+
+    for token in pairs.clone().tokens() {
+        println!("{:?}", token);
+    }
 
     let script = Script::new(pairs);
 
